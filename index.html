@@ -862,8 +862,11 @@
     // iOS/Android handler but spec-correct.
     shareSmsLink.href =
       'sms:?body=' + encodeURIComponent(SHARE_PITCH + ' ' + shareUrl());
+    // X renamed the intent endpoint and `x.com/intent/tweet` now 404s
+    // intermittently; `twitter.com/intent/tweet` still works and X honors
+    // the redirect. Use the older domain for stability.
     shareXLink.href =
-      'https://x.com/intent/tweet?text=' +
+      'https://twitter.com/intent/tweet?text=' +
       encodeURIComponent(SHARE_PITCH) +
       '&url=' +
       encodeURIComponent(shareUrl());
