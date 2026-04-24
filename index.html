@@ -764,7 +764,6 @@
         <div class="share__row">
           <button type="button" class="share__btn" data-share="copy" id="share-copy">Copy link</button>
           <a class="share__btn" data-share="sms" id="share-sms" href="#">Text</a>
-          <a class="share__btn" data-share="x"   id="share-x"   href="#" target="_blank" rel="noopener noreferrer">X</a>
         </div>
       </div>
     </div>
@@ -828,7 +827,6 @@
     var sharePrompt = document.getElementById('share-prompt');
     var shareCopyBtn = document.getElementById('share-copy');
     var shareSmsLink = document.getElementById('share-sms');
-    var shareXLink = document.getElementById('share-x');
     var btn = document.getElementById('submit-btn');
     var email = document.getElementById('email');
     var betaCounter = document.getElementById('beta-counter');
@@ -887,21 +885,11 @@
       });
 
     // --- Share row wiring ---------------------------------------------------
-    // Pre-build href values. They're constants today; rebuilding on click would
-    // only matter if we later personalized them per-user. Per RFC 5724 the
-    // sms: URI's query uses `?body=` (not `?&body=`), accepted by every tested
-    // iOS/Android handler but spec-correct.
+    // Pre-build the SMS href. Per RFC 5724 the sms: URI's query uses `?body=`
+    // (not `?&body=`), accepted by every tested iOS/Android handler but
+    // spec-correct.
     shareSmsLink.href =
       'sms:?body=' + encodeURIComponent(SHARE_PITCH + ' ' + shareUrl());
-    // X renamed "tweet" to "post" in its URL scheme; the old intent endpoints
-    // (x.com/intent/tweet AND twitter.com/intent/tweet) 404 inconsistently.
-    // The current canonical endpoint is x.com/intent/post — same query
-    // parameters, same compose modal, just the new verb in the path.
-    shareXLink.href =
-      'https://x.com/intent/post?text=' +
-      encodeURIComponent(SHARE_PITCH) +
-      '&url=' +
-      encodeURIComponent(shareUrl());
 
     // Snapshot the copy button label once at init — re-reading it inside the
     // click handler would trap the "Copied ✓" transient state if a second
