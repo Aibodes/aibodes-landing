@@ -119,10 +119,13 @@
     width: 100%;
     max-width: 360px;
     height: auto;
-    /* The logo PNG has transparent padding baked in around the mark.
-       A negative bottom margin pulls the umlaut up tight against it so
-       the visual gap matches intent, not the asset's internal whitespace. */
-    margin: 0 auto -8px;
+    /* The logo is a 1024x1024 square PNG where the actual mark occupies
+       only the middle ~60% — the rest is transparent padding. A large
+       negative bottom margin pulls the umlaut up past that padding so the
+       visual gap is ~one line-height rather than ~60-70px of dead pixels.
+       Matched by a -32px top pull so the mark also sits tight to the top
+       of main. Tune these two numbers if the asset ever gets re-exported. */
+    margin: -32px auto -56px;
     display: block;
     animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
