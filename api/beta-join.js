@@ -177,18 +177,25 @@ module.exports = async function betaJoin(request, response) {
     });
 
     if (!mcResponse.ok) {
-      // Parse Mailchimp's error body to log only the non-PII fields (status,
-      // title, detail). Their error responses echo the submitted email
-      // verbatim — we strip that out so Class-2 data doesn't end up in Vercel
-      // function logs by default. `rawBody` stays local to the catch.
+      // Parse Mailchimp's error body to log only the non-PII fields. Their
+      // `detail` field routinely echoes the submitted email verbatim
+      // (e.g. "foo@bar.com is in a compliance state..."), so we scrub any
+      // email-shaped substring out of it before logging. The class-2
+      // redaction bar from aibodes-security-architecture.md §11 applies:
+      // application logs must never contain user emails.
       var rawBody = await mcResponse.text();
       var safe = { status: mcResponse.status };
       try {
         var parsed = JSON.parse(rawBody);
         if (parsed && typeof parsed === "object") {
           if (typeof parsed.title === "string") safe.title = parsed.title;
-          if (typeof parsed.detail === "string") safe.detail = parsed.detail;
           if (typeof parsed.type === "string") safe.type = parsed.type;
+          if (typeof parsed.detail === "string") {
+            safe.detail = parsed.detail.replace(
+              /[^\s@]+@[^\s@]+\.[^\s@]+/g,
+              "[email-redacted]"
+            );
+          }
         }
       } catch (_) {
         // Non-JSON body (rare); log only its length, not contents.

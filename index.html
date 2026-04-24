@@ -1070,7 +1070,8 @@
       turnstile_invalid_token: "Our bot-check couldn't verify you just yet. Please wait a second and try again.",
       turnstile_rejected: 'Our bot-check flagged that submission. If you are a human, please reload and try again.',
       turnstile_verify_failed: 'Our bot-check is temporarily unavailable. Try again in a moment.',
-      turnstile_unconfigured: 'Signup is temporarily unavailable. Try again in a moment.',
+      // (No turnstile_unconfigured: verifyTurnstile fails OPEN when the
+      // secret is missing, so the server never returns that error code.)
     };
 
     function showFormError(code) {
@@ -1078,6 +1079,20 @@
       formError.hidden = false;
       btn.disabled = false;
       btn.textContent = 'Join the beta';
+      // Turnstile tokens are single-use. If we reach this branch the token
+      // has either been consumed by Cloudflare's siteverify (on a server
+      // error) or never issued (network failure). Reset the widget so the
+      // next submit attempt uses a fresh token; otherwise the user is
+      // trapped in a "timeout-or-duplicate" loop and has to reload to
+      // sign up even if the original error was just a typo.
+      resetTurnstile();
+    }
+
+    function resetTurnstile() {
+      _turnstileToken = null;
+      if (window.turnstile && typeof window.turnstile.reset === 'function') {
+        try { window.turnstile.reset(); } catch (_) { /* non-fatal */ }
+      }
     }
 
     function readRefFromUrl() {
