@@ -117,9 +117,12 @@
 
   .logo {
     width: 100%;
-    max-width: 280px;
+    max-width: 360px;
     height: auto;
-    margin: 0 auto 20px;
+    /* The logo PNG has transparent padding baked in around the mark.
+       A negative bottom margin pulls the umlaut up tight against it so
+       the visual gap matches intent, not the asset's internal whitespace. */
+    margin: 0 auto -8px;
     display: block;
     animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -323,7 +326,7 @@
       width: 100%;
     }
     .logo {
-      max-width: 240px;
+      max-width: 292px;
     }
     .field-row {
       flex-direction: column;
