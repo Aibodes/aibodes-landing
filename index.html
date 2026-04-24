@@ -663,15 +663,6 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Hidden iframe target so form submission doesn't navigate away */
-  iframe.mc-target {
-    position: absolute;
-    width: 0;
-    height: 0;
-    border: 0;
-    visibility: hidden;
-  }
-
   /* Honeypot field — hidden from real users, catches bots */
   .honeypot {
     position: absolute;
@@ -707,10 +698,14 @@
       <span class="beta-counter__copy">people have joined the Aibödes beta.</span>
     </div>
 
+    <!-- Submission is handled by JS (see the IIFE at the bottom of this file)
+         which fetches /api/beta-join. The form's action is a no-op fallback
+         that fails loudly rather than silently bypassing the API's Origin
+         check, honeypot handling, and double-opt-in policy if JS fails to
+         load. The <noscript> block below provides the user-facing fallback. -->
     <form id="signup"
-          action="https://aibodes.us11.list-manage.com/subscribe/post?u=876470086c14de5e807ef9fc6&amp;id=177d7768dd&amp;f_id=002d5be0f0"
+          action="/api/beta-join"
           method="post"
-          target="mc-target"
           novalidate>
       <div class="field-row">
         <input type="email" name="EMAIL" id="email" required
@@ -753,12 +748,18 @@
       <p class="fineprint">No spam. No data selling. One email — when we're live.</p>
 
       <p class="form-error" id="form-error" role="alert" hidden></p>
+
+      <noscript>
+        <p class="form-error" style="color: var(--cream-dim); margin-top: 12px;">
+          JavaScript is required to join the Aibödes beta. Please enable it and reload.
+        </p>
+      </noscript>
     </form>
 
     <div class="success" id="success" role="status" aria-live="polite">
       <div class="dots" aria-hidden="true"><span></span><span></span></div>
-      <h3 id="success-title">You're on the Aibödes beta.</h3>
-      <p>We'll reach out the moment Aibödes is live. One email, that's it.</p>
+      <h3 id="success-title">Almost there — check your email.</h3>
+      <p>We just sent a confirmation link. Click it to lock in your Aibödes beta spot. One email when we're live; nothing else.</p>
       <!-- Role echo — only renders if the subscriber tapped a pill. Confirms
            client-side capture so discrepancies with Mailchimp are
            diagnosable (if this shows but Mailchimp is empty, the drop is
@@ -822,13 +823,10 @@
   © Aibödes
 </footer>
 
-<iframe class="mc-target" name="mc-target" title="Form submission target"></iframe>
-
 <script>
   (function () {
     var form = document.getElementById('signup');
     var success = document.getElementById('success');
-    var successTitle = document.getElementById('success-title');
     var successRole = document.getElementById('success-role');
     var sharePrompt = document.getElementById('share-prompt');
     var shareCopyBtn = document.getElementById('share-copy');
@@ -952,17 +950,15 @@
       // confirmation on a clipboard write that didn't actually happen.
     });
 
-    // Adjust the success-state copy based on whether the beta count has
-    // crossed the public threshold. Below: generic "you're on the list" and
-    // an invitation to help cross the threshold. At/above: the subscriber's
-    // numbered position + a plain "share" prompt.
+    // With Mailchimp double opt-in, every submission lands in a "check your
+    // email to confirm" state regardless of count — so the title is fixed
+    // in the markup. Only the share prompt flips on the public-count
+    // threshold: below, we invite the new subscriber to help us cross it;
+    // at/above, we drop the ceremony and just ask for a share.
     function updateSuccessCopy(count) {
       if (Number.isFinite(count) && count >= PUBLIC_THRESHOLD) {
-        successTitle.textContent =
-          "You're #" + countFormatter.format(count) + ' on the Aibödes beta.';
-        sharePrompt.textContent = 'Share Aibödes →';
+        sharePrompt.textContent = 'Once you confirm, share Aibödes →';
       } else {
-        successTitle.textContent = "You're on the Aibödes beta.";
         sharePrompt.textContent =
           'We go public at ' +
           countFormatter.format(PUBLIC_THRESHOLD) +

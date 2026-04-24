@@ -11,8 +11,18 @@ const crypto = require("crypto");
 
 const DEFAULT_AUDIENCE_ID = "177d7768dd";
 const ROLE_VALUES = ["seller", "buyer", "both", "curious"];
+// RFC 5321 caps an address at 254 bytes. The regex has no length bound, so
+// we pre-check length to avoid forwarding absurd payloads to Mailchimp.
+const EMAIL_MAX_BYTES = 254;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REF_RE = /^[a-zA-Z0-9_-]{1,32}$/;
+// Origins allowed to POST to this endpoint. Everything else (other sites,
+// curl without a header, arbitrary scripts on other domains) is rejected.
+// Not a full CSRF defense on its own, but filters casual scripted abuse.
+const ALLOWED_ORIGINS = new Set([
+  "https://aibodes.com",
+  "https://www.aibodes.com",
+]);
 
 function sendJson(response, statusCode, payload) {
   response.statusCode = statusCode;
@@ -55,6 +65,21 @@ module.exports = async function betaJoin(request, response) {
     return sendJson(response, 405, { error: "method_not_allowed" });
   }
 
+  // Origin / Referer gate. Cheap zero-dep CSRF filter: only accept POSTs
+  // from aibodes.com. Bypassable by anyone willing to forge headers, but
+  // stops casual scripted abuse from other origins without any cost.
+  var origin = request.headers.origin || request.headers.referer || "";
+  var matched = false;
+  for (var allowed of ALLOWED_ORIGINS) {
+    if (origin === allowed || origin.indexOf(allowed + "/") === 0) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) {
+    return sendJson(response, 403, { error: "origin_not_allowed" });
+  }
+
   var body;
   try {
     body = await readJsonBody(request);
@@ -70,7 +95,7 @@ module.exports = async function betaJoin(request, response) {
   }
 
   var email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  if (!EMAIL_RE.test(email)) {
+  if (!email || email.length > EMAIL_MAX_BYTES || !EMAIL_RE.test(email)) {
     return sendJson(response, 400, { error: "invalid_email" });
   }
 
@@ -100,9 +125,15 @@ module.exports = async function betaJoin(request, response) {
     "https://" + serverPrefix + ".api.mailchimp.com/3.0/lists/" +
     audienceId + "/members/" + subscriberHash;
 
+  // status_if_new: "pending" triggers Mailchimp's double opt-in confirmation
+  // email — the address owner must click the link before the subscription
+  // activates. This is the abuse gate: a hostile actor can POST arbitrary
+  // email addresses here, but none of them end up on the active mailing list
+  // without consent. Flip to "subscribed" only if/when we front this with a
+  // Turnstile challenge and proper rate limiting.
   var payload = {
     email_address: email,
-    status_if_new: "subscribed",
+    status_if_new: "pending",
     merge_fields: mergeFields,
   };
 
@@ -117,11 +148,24 @@ module.exports = async function betaJoin(request, response) {
     });
 
     if (!mcResponse.ok) {
+      // Parse Mailchimp's error body to log only the non-PII fields (status,
+      // title, detail). Their error responses echo the submitted email
+      // verbatim — we strip that out so Class-2 data doesn't end up in Vercel
+      // function logs by default. `rawBody` stays local to the catch.
       var rawBody = await mcResponse.text();
-      // Log the full Mailchimp error server-side (Vercel function logs capture
-      // this), but surface only the HTTP status and a generic message to the
-      // client so we don't leak audience IDs or API-key formats in browser.
-      console.error("Mailchimp error:", mcResponse.status, rawBody);
+      var safe = { status: mcResponse.status };
+      try {
+        var parsed = JSON.parse(rawBody);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.title === "string") safe.title = parsed.title;
+          if (typeof parsed.detail === "string") safe.detail = parsed.detail;
+          if (typeof parsed.type === "string") safe.type = parsed.type;
+        }
+      } catch (_) {
+        // Non-JSON body (rare); log only its length, not contents.
+        safe.rawLength = rawBody.length;
+      }
+      console.error("mailchimp_error", safe);
       return sendJson(response, 502, {
         error: "mailchimp_error",
         status: mcResponse.status,
@@ -130,7 +174,8 @@ module.exports = async function betaJoin(request, response) {
 
     return sendJson(response, 200, { ok: true });
   } catch (error) {
-    console.error("beta-join fetch failed:", error && error.message);
+    // Keep the log line free of user input.
+    console.error("fetch_failed", { message: error && error.message });
     return sendJson(response, 502, { error: "fetch_failed" });
   }
 };
