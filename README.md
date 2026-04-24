@@ -15,7 +15,7 @@ Optional Vercel environment variables:
 - `MAILCHIMP_AUDIENCE_ID` — Mailchimp audience/list ID. Defaults to the audience ID already used by the embedded signup form.
 - `MAILCHIMP_SERVER_PREFIX` — Mailchimp datacenter prefix such as `us11`. If omitted, the API route derives it from the suffix of `MAILCHIMP_API_KEY`.
 - `BETA_SIGNUP_COUNT_FALLBACK` — non-secret fallback number to render if Mailchimp is temporarily unavailable.
-- `BETA_SIGNUP_COUNT_PUBLIC_THRESHOLD` — minimum count required before the public counter appears. Defaults to `25`.
+- `BETA_SIGNUP_COUNT_PUBLIC_THRESHOLD` — minimum count required before the public counter appears. Defaults to `1000`.
 
 Do not put the Mailchimp API key in `index.html`; it must stay server-side.
 

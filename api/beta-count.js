@@ -1,5 +1,5 @@
 const DEFAULT_AUDIENCE_ID = "177d7768dd";
-const DEFAULT_PUBLIC_THRESHOLD = 25;
+const DEFAULT_PUBLIC_THRESHOLD = 1000;
 
 function sendJson(response, statusCode, payload, cacheControl) {
   response.statusCode = statusCode;
