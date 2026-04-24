@@ -124,13 +124,21 @@
     animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  /* Breathing umlaut — sits as a quiet accent above the headline */
+  /* Breathing umlaut — the brand motif sitting as a quiet accent above the
+     headline. Two layered animations:
+       - `breathe` on each dot (inherited): independent scale + opacity pulse
+       - `umlautDrift` on the pair container (new): slow 7s vertical bob
+     The drift is deliberately tiny (3px) and slow so it reads as "living"
+     rather than animating — per the design thesis, motion is a material not
+     a gimmick. The drift starts after the fadeUp entrance has finished. */
   .umlaut {
     display: flex;
     justify-content: center;
     gap: 14px;
     margin-bottom: 28px;
-    animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+    animation:
+      fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both,
+      umlautDrift 7s ease-in-out 1.5s infinite;
   }
   .umlaut span {
     width: 8px;
@@ -144,6 +152,29 @@
   @keyframes breathe {
     0%, 100% { transform: scale(0.75); opacity: 0.4; }
     50%      { transform: scale(1.1);  opacity: 1; }
+  }
+
+  @keyframes umlautDrift {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+
+  /* Respect users who prefer reduced motion: freeze the infinite animations
+     (umlaut breathe + drift, success dots breathe) to a static state.
+     One-shot fadeUp entrances stay — they complete quickly and don't loop. */
+  @media (prefers-reduced-motion: reduce) {
+    .umlaut { animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both; }
+    .umlaut span,
+    .success .dots span {
+      animation: none;
+    }
+    /* Strip the 1px hover lift on the share and submit buttons so reduced-
+       motion users don't get a transform they didn't ask for. Tonal cues
+       (border-color, background) still carry the hover affordance. */
+    button:hover,
+    .share__btn:hover {
+      transform: none;
+    }
   }
 
   h1 {
@@ -378,6 +409,123 @@
   }
   .success .dots span:nth-child(2) { animation-delay: 1.1s; }
 
+  /* --- Optional role segmentation inside the signup form --- */
+  /* Sits below the email/button row and above the fineprint. Four small
+     rectangular toggles matching the page's 12px-radius vocabulary. Selected
+     state uses the existing sage accent (kept to one warm color). */
+  .segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 14px;
+  }
+  .segment__label {
+    font-size: 13.5px;
+    color: var(--cream-dim);
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+  .segment__optional {
+    color: rgba(240, 233, 214, 0.42);
+    font-weight: 400;
+  }
+  .segment__row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .segment__btn {
+    background: transparent;
+    border: 1px solid var(--cream-faint);
+    color: var(--cream-dim);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+    padding: 8px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition:
+      border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .segment__btn:hover {
+    border-color: var(--cream);
+    color: var(--cream);
+  }
+  .segment__btn:focus-visible {
+    outline: 2px solid var(--cream);
+    outline-offset: 2px;
+  }
+  .segment__btn.is-selected {
+    border-color: var(--sage);
+    background: rgba(185, 200, 166, 0.12);
+    color: var(--sage);
+  }
+
+  /* --- Share row inside the post-signup success state --- */
+  /* The row appears under the reassurance copy after a successful signup.
+     Below the public-count threshold it reads as "help us unlock";
+     at/above threshold it reads as a plain "share". The JS at the bottom
+     of this file flips the copy based on the current count. */
+  .share {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--cream-faint);
+  }
+  .share__prompt {
+    font-size: 13.5px;
+    color: var(--cream-dim);
+    font-weight: 500;
+    line-height: 1.45;
+    margin-bottom: 12px;
+  }
+  .share__row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .share__btn {
+    background: transparent;
+    border: 1px solid var(--cream-faint);
+    color: var(--cream);
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    padding: 10px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition:
+      border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .share__btn:hover {
+    border-color: var(--cream);
+    background: rgba(240, 233, 214, 0.06);
+    transform: translateY(-1px);
+  }
+  .share__btn:active { transform: translateY(0); }
+  .share__btn:focus-visible {
+    outline: 2px solid var(--cream);
+    outline-offset: 2px;
+  }
+  /* Briefly sage-accented after a successful clipboard write */
+  .share__btn.is-copied {
+    border-color: var(--sage);
+    color: var(--sage);
+  }
+
   .story {
     width: 100%;
     max-width: 920px;
@@ -552,13 +700,47 @@
       <div class="honeypot" aria-hidden="true">
         <input type="text" name="b_876470086c14de5e807ef9fc6_177d7768dd" tabindex="-1" value="">
       </div>
+
+      <!-- Optional role segmentation. Tells Aibödes which side of the
+           marketplace each subscriber represents (seller vs. buyer vs. both vs.
+           tire-kicker) so launch comms can be segmented rather than blasted.
+           Skip-able: leaving all four unselected still submits. The enum is
+           validated both client-side (only these four values set the hidden
+           input) and server-side by Mailchimp's merge-field rules.
+           Requires a ROLE merge field in the Mailchimp audience settings to
+           actually persist — extra form fields are silently accepted otherwise. -->
+      <div class="segment" id="segment">
+        <span class="segment__label">I'm here as a <span class="segment__optional">(optional)</span></span>
+        <!-- Toggle-button group rather than an ARIA radiogroup: our UX allows
+             deselect-on-second-click (collapse to "no answer"), which violates
+             the radio contract. aria-pressed on each button expresses the real
+             semantics — a set of independent toggles whose click handler
+             enforces single-select. -->
+        <div class="segment__row" aria-label="Your role">
+          <button type="button" class="segment__btn" data-role="seller"  aria-pressed="false">Seller</button>
+          <button type="button" class="segment__btn" data-role="buyer"   aria-pressed="false">Buyer</button>
+          <button type="button" class="segment__btn" data-role="both"    aria-pressed="false">Both</button>
+          <button type="button" class="segment__btn" data-role="curious" aria-pressed="false">Just curious</button>
+        </div>
+        <input type="hidden" name="ROLE" id="role-input" value="">
+      </div>
+
       <p class="fineprint">No spam. No data selling. One email — when we're live.</p>
     </form>
 
     <div class="success" id="success" role="status" aria-live="polite">
       <div class="dots" aria-hidden="true"><span></span><span></span></div>
-      <h3>You're on the beta list.</h3>
+      <h3 id="success-title">You're on the Aibödes beta.</h3>
       <p>We'll reach out the moment Aibödes is live. One email, that's it.</p>
+
+      <div class="share" aria-label="Share Aibödes">
+        <p class="share__prompt" id="share-prompt">Help us unlock the public counter — share Aibödes.</p>
+        <div class="share__row">
+          <button type="button" class="share__btn" data-share="copy" id="share-copy">Copy link</button>
+          <a class="share__btn" data-share="sms" id="share-sms" href="#">Text</a>
+          <a class="share__btn" data-share="x"   id="share-x"   href="#" target="_blank" rel="noopener noreferrer">X</a>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -615,6 +797,11 @@
   (function () {
     var form = document.getElementById('signup');
     var success = document.getElementById('success');
+    var successTitle = document.getElementById('success-title');
+    var sharePrompt = document.getElementById('share-prompt');
+    var shareCopyBtn = document.getElementById('share-copy');
+    var shareSmsLink = document.getElementById('share-sms');
+    var shareXLink = document.getElementById('share-x');
     var btn = document.getElementById('submit-btn');
     var email = document.getElementById('email');
     var betaCounter = document.getElementById('beta-counter');
@@ -622,6 +809,24 @@
     var betaCounterCopy = betaCounter.querySelector('.beta-counter__copy');
     var currentBetaCount = null;
     var countFormatter = new Intl.NumberFormat('en-US');
+
+    // Mirrored from DEFAULT_PUBLIC_THRESHOLD in api/beta-count.js. Below this
+    // the server withholds the count and the UI tells new subscribers to
+    // help us unlock it; at/above, we show their position. If the server
+    // threshold is changed via BETA_SIGNUP_COUNT_PUBLIC_THRESHOLD, update
+    // this constant in tandem. (Surfacing this from the API response is a
+    // cleaner next step but not in scope for this chunk.)
+    var PUBLIC_THRESHOLD = 1000;
+
+    var CANONICAL_URL = 'https://www.aibodes.com/';
+    var SHARE_PITCH =
+      'Aibödes is building a new way to buy and sell homes — directly, without the 6% agent tax. Join the beta:';
+
+    function shareUrl() {
+      // ?ref=share lets James attribute referred traffic in Mailchimp via the
+      // REF merge field (see captureReferralParam below).
+      return CANONICAL_URL + '?ref=share';
+    }
 
     function renderBetaCount(count) {
       if (!Number.isFinite(count) || count < 0) return;
@@ -650,6 +855,142 @@
         // Keep the landing page calm if the count endpoint is unavailable.
       });
 
+    // --- Share row wiring ---------------------------------------------------
+    // Pre-build href values. They're constants today; rebuilding on click would
+    // only matter if we later personalized them per-user. Per RFC 5724 the
+    // sms: URI's query uses `?body=` (not `?&body=`), accepted by every tested
+    // iOS/Android handler but spec-correct.
+    shareSmsLink.href =
+      'sms:?body=' + encodeURIComponent(SHARE_PITCH + ' ' + shareUrl());
+    shareXLink.href =
+      'https://x.com/intent/tweet?text=' +
+      encodeURIComponent(SHARE_PITCH) +
+      '&url=' +
+      encodeURIComponent(shareUrl());
+
+    // Snapshot the copy button label once at init — re-reading it inside the
+    // click handler would trap the "Copied ✓" transient state if a second
+    // click happens inside the 1,600ms revert window.
+    var copyBtnOriginalLabel = shareCopyBtn.textContent;
+
+    function legacyCopy(text) {
+      // execCommand('copy') is deprecated but remains the only fallback on
+      // older Safari and non-secure contexts (e.g., plain http localhost).
+      // Returns true on success, false on failure — the caller decides
+      // whether to flash the confirmed state.
+      var helper = document.createElement('textarea');
+      helper.value = text;
+      helper.setAttribute('readonly', '');
+      helper.style.position = 'absolute';
+      helper.style.left = '-9999px';
+      document.body.appendChild(helper);
+      var ok = false;
+      try {
+        helper.select();
+        ok = document.execCommand('copy');
+      } catch (_) {
+        ok = false;
+      } finally {
+        // Always remove the helper even if select() or execCommand threw;
+        // otherwise a stray <textarea> would leak into the DOM.
+        document.body.removeChild(helper);
+      }
+      return ok;
+    }
+
+    function flashCopied() {
+      shareCopyBtn.textContent = 'Copied ✓';
+      shareCopyBtn.classList.add('is-copied');
+      setTimeout(function () {
+        shareCopyBtn.textContent = copyBtnOriginalLabel;
+        shareCopyBtn.classList.remove('is-copied');
+      }, 1600);
+    }
+
+    shareCopyBtn.addEventListener('click', function () {
+      var url = shareUrl();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(url)
+          .then(flashCopied)
+          .catch(function () {
+            if (legacyCopy(url)) flashCopied();
+          });
+      } else if (legacyCopy(url)) {
+        flashCopied();
+      }
+      // If both paths fail we stay silent — better than a false-positive
+      // confirmation on a clipboard write that didn't actually happen.
+    });
+
+    // Adjust the success-state copy based on whether the beta count has
+    // crossed the public threshold. Below: generic "you're on the list" and
+    // an invitation to help cross the threshold. At/above: the subscriber's
+    // numbered position + a plain "share" prompt.
+    function updateSuccessCopy(count) {
+      if (Number.isFinite(count) && count >= PUBLIC_THRESHOLD) {
+        successTitle.textContent =
+          "You're #" + countFormatter.format(count) + ' on the Aibödes beta.';
+        sharePrompt.textContent = 'Share Aibödes →';
+      } else {
+        successTitle.textContent = "You're on the Aibödes beta.";
+        sharePrompt.textContent =
+          'We go public at ' +
+          countFormatter.format(PUBLIC_THRESHOLD) +
+          '. Help us get there →';
+      }
+    }
+
+    // --- Role segmentation --------------------------------------------------
+    // The four buttons above the fineprint behave like a single-select radio
+    // group. Click toggles the visual state and writes the data-role value
+    // into the hidden ROLE input. The ROLE_VALUES allowlist is a defense-in-
+    // depth guard: even if the DOM is tampered with, only these four strings
+    // will ever be submitted to Mailchimp.
+    var segmentButtons = document.querySelectorAll('.segment__btn');
+    var roleInput = document.getElementById('role-input');
+    var ROLE_VALUES = ['seller', 'buyer', 'both', 'curious'];
+
+    Array.prototype.forEach.call(segmentButtons, function (button) {
+      button.addEventListener('click', function () {
+        var role = button.getAttribute('data-role');
+        if (ROLE_VALUES.indexOf(role) === -1) return;
+        // Clicking the already-selected button deselects it — lets a user
+        // change their mind back to "no answer" without reloading.
+        var wasSelected = button.classList.contains('is-selected');
+        Array.prototype.forEach.call(segmentButtons, function (other) {
+          other.classList.remove('is-selected');
+          other.setAttribute('aria-pressed', 'false');
+        });
+        if (!wasSelected) {
+          button.classList.add('is-selected');
+          button.setAttribute('aria-pressed', 'true');
+          roleInput.value = role;
+        } else {
+          roleInput.value = '';
+        }
+      });
+    });
+
+    // --- Referral attribution -----------------------------------------------
+    // If a visitor arrives via ?ref=<token> we attach the token to the form as
+    // a REF merge field. Mailchimp will silently ignore it unless James adds a
+    // REF merge field in the audience settings. The regex hard-caps length and
+    // charset so we never echo arbitrary attacker-supplied strings.
+    function captureReferralParam() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var ref = params.get('ref');
+        if (!ref || !/^[a-zA-Z0-9_-]{1,32}$/.test(ref)) return;
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'REF';
+        hidden.value = ref;
+        form.appendChild(hidden);
+      } catch (_) { /* non-fatal */ }
+    }
+    captureReferralParam();
+
     form.addEventListener('submit', function (e) {
       // Let the browser handle basic HTML5 validation first
       if (!email.value || !email.checkValidity()) {
@@ -667,9 +1008,14 @@
       // background, so the user never sees a redirect.
       setTimeout(function () {
         form.style.display = 'none';
-        if (currentBetaCount !== null) {
-          renderBetaCount(currentBetaCount + 1);
+        // Compute the optimistic post-signup count once and pass it to both
+        // the counter render and the success-copy update — sidesteps any
+        // order-of-operations dependency on currentBetaCount's closure state.
+        var newCount = currentBetaCount !== null ? currentBetaCount + 1 : null;
+        if (newCount !== null) {
+          renderBetaCount(newCount);
         }
+        updateSuccessCopy(newCount);
         success.classList.add('shown');
       }, 900);
     });
