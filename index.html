@@ -319,9 +319,6 @@
     }
     .story__intro,
     .proof-grid,
-    .faq-list {
-      max-width: 100%;
-    }
     .proof-grid {
       grid-template-columns: 1fr;
     }
@@ -388,10 +385,6 @@
     margin: 0 auto;
     padding: 54px 0 12px;
     border-top: 1px solid var(--cream-faint);
-  }
-
-  .story + .story {
-    padding-top: 42px;
   }
 
   .story__intro {
@@ -461,35 +454,6 @@
     line-height: 1.58;
   }
 
-  .faq-list {
-    width: 100%;
-    max-width: 780px;
-    min-width: 0;
-    margin: 0 auto;
-    display: grid;
-    gap: 18px;
-  }
-
-  .faq-list div {
-    padding-bottom: 18px;
-    border-bottom: 1px solid var(--cream-faint);
-  }
-
-  .faq-list dt {
-    color: var(--cream);
-    font-size: 17px;
-    font-weight: 650;
-    line-height: 1.35;
-    margin-bottom: 8px;
-  }
-
-  .faq-list dd {
-    color: var(--cream-dim);
-    font-size: 15px;
-    line-height: 1.62;
-    overflow-wrap: break-word;
-  }
-
   @media (max-width: 700px) {
     .story {
       max-width: 100%;
@@ -498,9 +462,6 @@
     }
     .story__intro,
     .proof-grid,
-    .faq-list {
-      max-width: 100%;
-    }
     .story h2 {
       font-size: clamp(24px, 8vw, 32px);
     }
@@ -642,39 +603,6 @@
     </div>
   </section>
 
-  <section class="story" aria-labelledby="faq-heading">
-    <div class="story__intro">
-      <p class="kicker">What people ask</p>
-      <h2 id="faq-heading">Aibödes, Aibodes, and the beta.</h2>
-    </div>
-
-    <dl class="faq-list">
-      <div>
-        <dt>What is Aibödes?</dt>
-        <dd>
-          Aibödes is an AI-guided real estate platform for people who want to
-          sell or buy homes directly, with software handling the transaction
-          structure that usually requires a traditional agent.
-        </dd>
-      </div>
-      <div>
-        <dt>Is Aibödes the same as Aibodes?</dt>
-        <dd>
-          Yes. Aibödes is the brand name, and Aibodes is the no-umlaut spelling
-          people often type into Google. Aibodes app and Aibödes app both refer
-          to this product.
-        </dd>
-      </div>
-      <div>
-        <dt>Can I sell a home without a realtor?</dt>
-        <dd>
-          The product is being designed for direct buyer-seller transactions:
-          listings, offers, counteroffers, disclosures, signatures, and closing
-          support in one guided workflow.
-        </dd>
-      </div>
-    </dl>
-  </section>
 </main>
 
 <footer>
