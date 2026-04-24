@@ -417,6 +417,17 @@
   }
   .success__role[hidden] { display: none; }
 
+  /* Inline error state — surfaced when /api/beta-join returns a non-OK
+     response or the network fetch fails. Muted warm red; never yells. */
+  .form-error {
+    margin-top: 12px;
+    font-size: 13.5px;
+    color: #f2a79d;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .form-error[hidden] { display: none; }
+
   /* --- Optional role segmentation inside the signup form --- */
   /* Sits below the email/button row and above the fineprint. Four small
      rectangular toggles matching the page's 12px-radius vocabulary. Selected
@@ -734,6 +745,8 @@
       </div>
 
       <p class="fineprint">No spam. No data selling. One email — when we're live.</p>
+
+      <p class="form-error" id="form-error" role="alert" hidden></p>
     </form>
 
     <div class="success" id="success" role="status" aria-live="polite">
@@ -833,12 +846,16 @@
     var PUBLIC_THRESHOLD = 1000;
 
     var CANONICAL_URL = 'https://www.aibodes.com/';
+    // Keep the share pitch ASCII-only and under ~160 chars. X's URL parser
+    // has choked on the em-dash and umlaut characters via intent links in the
+    // past; ASCII sidesteps any percent-encoding fragility.
     var SHARE_PITCH =
-      'Aibödes is building a new way to buy and sell homes — directly, without the 6% agent tax. Join the beta:';
+      'Aibodes: a new way to buy and sell homes. Direct, AI-guided, without the 6% agent. Join the beta:';
 
     function shareUrl() {
-      // ?ref=share lets James attribute referred traffic in Mailchimp via the
-      // REF merge field (see captureReferralParam below).
+      // ?ref=share lets James attribute referred traffic: the landing JS
+      // reads the ref param on load and the form-submit handler forwards it
+      // to /api/beta-join, which writes it to the Mailchimp REF merge field.
       return CANONICAL_URL + '?ref=share';
     }
 
@@ -990,72 +1007,109 @@
       });
     });
 
-    // --- Referral attribution -----------------------------------------------
-    // If a visitor arrives via ?ref=<token> we attach the token to the form as
-    // a REF merge field. Mailchimp will silently ignore it unless James adds a
-    // REF merge field in the audience settings. The regex hard-caps length and
-    // charset so we never echo arbitrary attacker-supplied strings.
-    function captureReferralParam() {
+    // --- Form submission ----------------------------------------------------
+    // Submits via our Vercel function /api/beta-join (POSTs to the Mailchimp
+    // API server-side). Replaces the earlier hidden-iframe pattern because:
+    //   - We get real HTTP responses (the iframe path swallowed Mailchimp's
+    //     errors, which is why role-field drops were silent for days).
+    //   - We can accept arbitrary merge fields without re-embedding the form.
+    var formError = document.getElementById('form-error');
+    var ROLE_LABELS = {
+      seller: 'Seller',
+      buyer: 'Buyer',
+      both: 'Both a buyer and a seller',
+      curious: 'Curious about the product',
+    };
+    var ERROR_COPY = {
+      invalid_email: 'That email address looks off — please double-check it.',
+      invalid_body: "Something about that submission didn't look right.",
+      mailchimp_error: "Our mailing-list provider rejected that submission. Mind trying again?",
+      unconfigured: 'Signup is temporarily unavailable. Try again in a moment.',
+      fetch_failed: "We couldn't reach the server. Check your connection and try again.",
+      network_error: "We couldn't reach the server. Check your connection and try again.",
+    };
+
+    function showFormError(code) {
+      formError.textContent = ERROR_COPY[code] || "Something went wrong. Please try again.";
+      formError.hidden = false;
+      btn.disabled = false;
+      btn.textContent = 'Join the beta';
+    }
+
+    function readRefFromUrl() {
       try {
         var params = new URLSearchParams(window.location.search);
         var ref = params.get('ref');
-        if (!ref || !/^[a-zA-Z0-9_-]{1,32}$/.test(ref)) return;
-        var hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = 'REF';
-        hidden.value = ref;
-        form.appendChild(hidden);
+        if (ref && /^[a-zA-Z0-9_-]{1,32}$/.test(ref)) return ref;
       } catch (_) { /* non-fatal */ }
+      return '';
     }
-    captureReferralParam();
+
+    function renderSuccess(selectedRole) {
+      form.style.display = 'none';
+      // Compute the optimistic post-signup count once and pass it to both
+      // the counter render and the success-copy update — sidesteps any
+      // order-of-operations dependency on currentBetaCount's closure state.
+      var newCount = currentBetaCount !== null ? currentBetaCount + 1 : null;
+      if (newCount !== null) {
+        renderBetaCount(newCount);
+      }
+      updateSuccessCopy(newCount);
+
+      // Echo the captured role. Confirms to the subscriber that their pick
+      // was received; also makes drops diagnosable (if this shows but the
+      // Mailchimp record is empty, the server-side call is the problem).
+      if (selectedRole && ROLE_VALUES.indexOf(selectedRole) !== -1) {
+        successRole.textContent =
+          'Noted — we have you down as: ' + ROLE_LABELS[selectedRole] + '.';
+        successRole.hidden = false;
+      } else {
+        successRole.hidden = true;
+      }
+
+      success.classList.add('shown');
+    }
 
     form.addEventListener('submit', function (e) {
-      // Let the browser handle basic HTML5 validation first
+      e.preventDefault();
+      formError.hidden = true;
+
       if (!email.value || !email.checkValidity()) {
         email.reportValidity();
-        e.preventDefault();
         return;
       }
 
-      // Show optimistic UI: disable button, swap to success after submission
       btn.disabled = true;
       btn.textContent = 'Adding you…';
 
-      // After a brief moment, swap the form for the success state.
-      // The form itself submits to Mailchimp via the hidden iframe in the
-      // background, so the user never sees a redirect.
-      setTimeout(function () {
-        form.style.display = 'none';
-        // Compute the optimistic post-signup count once and pass it to both
-        // the counter render and the success-copy update — sidesteps any
-        // order-of-operations dependency on currentBetaCount's closure state.
-        var newCount = currentBetaCount !== null ? currentBetaCount + 1 : null;
-        if (newCount !== null) {
-          renderBetaCount(newCount);
-        }
-        updateSuccessCopy(newCount);
+      var honeypotInput = form.querySelector('.honeypot input');
+      var payload = {
+        email: email.value.trim(),
+        role: roleInput.value,
+        ref: readRefFromUrl(),
+        bot: honeypotInput ? honeypotInput.value : '',
+      };
 
-        // Echo the captured role back to the subscriber. Also serves as
-        // a client-side-vs-server-side diagnostic: if this line shows but
-        // Mailchimp's Role field is empty, the submission is dropping
-        // server-side, not client-side.
-        var selectedRole = roleInput.value;
-        if (selectedRole && ROLE_VALUES.indexOf(selectedRole) !== -1) {
-          var ROLE_LABELS = {
-            seller: 'Seller',
-            buyer: 'Buyer',
-            both: 'Both a buyer and a seller',
-            curious: 'Curious about the product',
-          };
-          successRole.textContent =
-            'Noted — we have you down as: ' + ROLE_LABELS[selectedRole] + '.';
-          successRole.hidden = false;
-        } else {
-          successRole.hidden = true;
-        }
-
-        success.classList.add('shown');
-      }, 900);
+      fetch('/api/beta-join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (response) {
+          return response.json()
+            .catch(function () { return { error: 'invalid_body' }; })
+            .then(function (data) { return { ok: response.ok, data: data }; });
+        })
+        .then(function (result) {
+          if (result.ok) {
+            renderSuccess(payload.role);
+          } else {
+            showFormError((result.data && result.data.error) || 'fetch_failed');
+          }
+        })
+        .catch(function () {
+          showFormError('network_error');
+        });
     });
   })();
 </script>
