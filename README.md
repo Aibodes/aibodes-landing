@@ -26,4 +26,4 @@ This repo includes:
 - `sitemap.xml` — lists the canonical homepage URL.
 - HTML metadata, canonical tags, Open Graph/Twitter metadata, and JSON-LD organization/site data in `index.html`.
 
-After deployment, verify `https://aibodes.com/` in Google Search Console, submit `https://aibodes.com/sitemap.xml`, and use URL Inspection for the homepage. Google can take days or weeks to reflect changes, and ranking first is not guaranteed by technical SEO alone; the site still needs useful content, real links, and time for crawling.
+After deployment, verify `https://www.aibodes.com/` in Google Search Console, submit `https://www.aibodes.com/sitemap.xml`, and use URL Inspection for the homepage. Google can take days or weeks to reflect changes, and ranking first is not guaranteed by technical SEO alone; the site still needs useful content, real links, and time for crawling.

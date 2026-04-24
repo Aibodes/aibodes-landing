@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://aibodes.com/sitemap.xml
+Sitemap: https://www.aibodes.com/sitemap.xml
