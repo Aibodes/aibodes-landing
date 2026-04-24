@@ -1,5 +1,12 @@
+const { checkRateLimit } = require("../lib/rateLimit.js");
+
 const DEFAULT_AUDIENCE_ID = "177d7768dd";
 const DEFAULT_PUBLIC_THRESHOLD = 1000;
+// 120 reads/min/IP is generous — the landing page fires one fetch per load,
+// so even aggressive F5-mashing stays well under. A cache-bust loop
+// (appending random query strings to defeat our CDN layer) is the real
+// abuse scenario this budget blocks.
+const RATE_LIMIT = { prefix: "beta-count", limit: 120, windowSeconds: 60 };
 
 function sendJson(response, statusCode, payload, cacheControl) {
   response.statusCode = statusCode;
@@ -47,6 +54,15 @@ module.exports = async function betaCount(request, response) {
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
     return sendJson(response, 405, { error: "method_not_allowed" });
+  }
+
+  // Per-IP rate limit applied pre-Mailchimp so cache-bust loops can't force
+  // a Mailchimp API call per unique query string. CDN cache still front-
+  // runs this for well-formed requests.
+  var rateResult = await checkRateLimit(request, RATE_LIMIT);
+  if (!rateResult.allowed) {
+    response.setHeader("Retry-After", String(RATE_LIMIT.windowSeconds));
+    return sendJson(response, 429, { error: "rate_limited" });
   }
 
   var fallbackCount = parseNonNegativeInteger(process.env.BETA_SIGNUP_COUNT_FALLBACK);

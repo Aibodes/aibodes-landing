@@ -1,0 +1,10 @@
+# Aibödes — responsible disclosure
+# https://securitytxt.org/
+# Replace the Contact address once security@aibodes.com is forwarding
+# correctly. Renew the Expires date annually.
+
+Contact: mailto:security@aibodes.com
+Expires: 2027-04-24T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.aibodes.com/.well-known/security.txt
+Policy: https://www.aibodes.com/SECURITY.md

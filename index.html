@@ -18,6 +18,21 @@
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Aibödes (Aibodes) | A new way home">
 <meta name="twitter:description" content="AI-guided, agent-free home sales. Sell and buy directly without the 6% middleman. Join the beta.">
+<!--
+  Cloudflare Turnstile — privacy-respecting invisible CAPTCHA. The script
+  is loaded async from challenges.cloudflare.com (origin allowlisted in
+  vercel.json's CSP). Subresource integrity intentionally omitted because
+  Cloudflare updates the file contents without notice.
+
+  Activation: the data-sitekey attribute on the widget below is set to a
+  placeholder. Replace TURNSTILE_SITEKEY_PLACEHOLDER with the real site
+  key from https://dash.cloudflare.com/?to=/:account/turnstile and set
+  the matching TURNSTILE_SECRET env var on Vercel. Until both are in
+  place, the server-side verifier fails open (with a logged warning)
+  and the widget renders harmlessly with the placeholder key.
+-->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -745,6 +760,19 @@
         <input type="hidden" name="ROLE" id="role-input" value="">
       </div>
 
+      <!-- Turnstile widget. Invisible in managed mode — Cloudflare only
+           shows a challenge if its risk signals flag the request. The
+           data-callback global receives the token; data-expired-callback
+           clears it so a stale token is never submitted.
+           Replace TURNSTILE_SITEKEY_PLACEHOLDER with the real site key. -->
+      <div class="cf-turnstile"
+           id="turnstile-widget"
+           data-sitekey="TURNSTILE_SITEKEY_PLACEHOLDER"
+           data-size="invisible"
+           data-callback="onTurnstileToken"
+           data-expired-callback="onTurnstileExpired"
+           data-error-callback="onTurnstileError"></div>
+
       <p class="fineprint">No spam. No data selling. One email — when we're live.</p>
 
       <p class="form-error" id="form-error" role="alert" hidden></p>
@@ -824,6 +852,26 @@
 </footer>
 
 <script>
+  // --- Turnstile integration ----------------------------------------------
+  // These callbacks are attached to window because Cloudflare's widget looks
+  // them up by the names set in the data-*-callback attributes. The token
+  // is closed over by the IIFE below via a getter function.
+  var _turnstileToken = null;
+  window.onTurnstileToken = function (token) {
+    _turnstileToken = token;
+  };
+  window.onTurnstileExpired = function () {
+    _turnstileToken = null;
+    // Ask the widget to refresh so the user doesn't have to; invisible mode
+    // will usually issue a fresh token automatically.
+    if (window.turnstile && window.turnstile.reset) {
+      try { window.turnstile.reset(); } catch (_) { /* non-fatal */ }
+    }
+  };
+  window.onTurnstileError = function () {
+    _turnstileToken = null;
+  };
+
   (function () {
     var form = document.getElementById('signup');
     var success = document.getElementById('success');
@@ -1017,6 +1065,12 @@
       unconfigured: 'Signup is temporarily unavailable. Try again in a moment.',
       fetch_failed: "We couldn't reach the server. Check your connection and try again.",
       network_error: "We couldn't reach the server. Check your connection and try again.",
+      origin_not_allowed: 'This form only works on aibodes.com. Please reload the page.',
+      rate_limited: "We're seeing a lot of attempts from your connection — please wait a moment and try again.",
+      turnstile_invalid_token: "Our bot-check couldn't verify you just yet. Please wait a second and try again.",
+      turnstile_rejected: 'Our bot-check flagged that submission. If you are a human, please reload and try again.',
+      turnstile_verify_failed: 'Our bot-check is temporarily unavailable. Try again in a moment.',
+      turnstile_unconfigured: 'Signup is temporarily unavailable. Try again in a moment.',
     };
 
     function showFormError(code) {
@@ -1078,6 +1132,12 @@
         role: roleInput.value,
         ref: readRefFromUrl(),
         bot: honeypotInput ? honeypotInput.value : '',
+        // The Turnstile callbacks at the top of this <script> update the
+        // _turnstileToken closure variable. If the widget hasn't issued a
+        // token yet (e.g., user submitted before CF verified), the value
+        // is null and the server will 400 turnstile_invalid_token — the
+        // client shows the form error and the user can retry.
+        turnstileToken: _turnstileToken || '',
       };
 
       fetch('/api/beta-join', {

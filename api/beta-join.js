@@ -8,8 +8,15 @@
 //      needing to re-embed the form in Mailchimp every time the schema changes.
 
 const crypto = require("crypto");
+const { checkRateLimit, getClientIp } = require("../lib/rateLimit.js");
+const { verifyTurnstile } = require("../lib/turnstile.js");
 
 const DEFAULT_AUDIENCE_ID = "177d7768dd";
+// Budget: a real human signs up once. Allowing 5/hour leaves room for
+// corrections / double-submits but blocks any sustained abuse. If a shared
+// NAT (coffee shop, corp network) trips this, users can come back in an
+// hour — acceptable tradeoff for a waitlist.
+const RATE_LIMIT = { prefix: "beta-join", limit: 5, windowSeconds: 3600 };
 const ROLE_VALUES = ["seller", "buyer", "both", "curious"];
 // RFC 5321 caps an address at 254 bytes. The regex has no length bound, so
 // we pre-check length to avoid forwarding absurd payloads to Mailchimp.
@@ -80,6 +87,15 @@ module.exports = async function betaJoin(request, response) {
     return sendJson(response, 403, { error: "origin_not_allowed" });
   }
 
+  // Rate limit BEFORE touching Mailchimp or Turnstile. An attacker shouldn't
+  // be able to burn through our Turnstile verify budget or Mailchimp API
+  // quota just by firing bad requests. Key per-IP; returns 429 on overflow.
+  var rateResult = await checkRateLimit(request, RATE_LIMIT);
+  if (!rateResult.allowed) {
+    response.setHeader("Retry-After", String(RATE_LIMIT.windowSeconds));
+    return sendJson(response, 429, { error: "rate_limited" });
+  }
+
   var body;
   try {
     body = await readJsonBody(request);
@@ -92,6 +108,19 @@ module.exports = async function betaJoin(request, response) {
   var honeypot = typeof body.bot === "string" ? body.bot.trim() : "";
   if (honeypot) {
     return sendJson(response, 200, { ok: true });
+  }
+
+  // Cloudflare Turnstile — asymmetric bot defense. Even a distributed
+  // botnet that rotates through IPs to evade the rate limit can't forge
+  // a valid Turnstile token. Fails CLOSED: if the token is missing,
+  // malformed, or rejected by Cloudflare, we refuse. The exception is
+  // the "unconfigured" branch inside verifyTurnstile (TURNSTILE_SECRET
+  // env var missing) which logs and passes — that's the pre-setup state
+  // and only applies until James registers the site with Cloudflare.
+  var turnstileToken = typeof body.turnstileToken === "string" ? body.turnstileToken : "";
+  var turnstileResult = await verifyTurnstile(turnstileToken, getClientIp(request));
+  if (!turnstileResult.ok) {
+    return sendJson(response, 400, { error: "turnstile_" + turnstileResult.reason });
   }
 
   var email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
