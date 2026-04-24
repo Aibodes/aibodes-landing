@@ -408,6 +408,14 @@
     animation: breathe 2.2s ease-in-out infinite;
   }
   .success .dots span:nth-child(2) { animation-delay: 1.1s; }
+  .success__role {
+    margin-top: 10px;
+    font-size: 13.5px;
+    color: var(--sage);
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+  .success__role[hidden] { display: none; }
 
   /* --- Optional role segmentation inside the signup form --- */
   /* Sits below the email/button row and above the fineprint. Four small
@@ -732,6 +740,11 @@
       <div class="dots" aria-hidden="true"><span></span><span></span></div>
       <h3 id="success-title">You're on the Aibödes beta.</h3>
       <p>We'll reach out the moment Aibödes is live. One email, that's it.</p>
+      <!-- Role echo — only renders if the subscriber tapped a pill. Confirms
+           client-side capture so discrepancies with Mailchimp are
+           diagnosable (if this shows but Mailchimp is empty, the drop is
+           server-side; if this is missing, the pill wasn't tapped). -->
+      <p class="success__role" id="success-role" hidden></p>
 
       <div class="share" aria-label="Share Aibödes">
         <p class="share__prompt" id="share-prompt">Help us unlock the public counter — share Aibödes.</p>
@@ -798,6 +811,7 @@
     var form = document.getElementById('signup');
     var success = document.getElementById('success');
     var successTitle = document.getElementById('success-title');
+    var successRole = document.getElementById('success-role');
     var sharePrompt = document.getElementById('share-prompt');
     var shareCopyBtn = document.getElementById('share-copy');
     var shareSmsLink = document.getElementById('share-sms');
@@ -862,11 +876,12 @@
     // iOS/Android handler but spec-correct.
     shareSmsLink.href =
       'sms:?body=' + encodeURIComponent(SHARE_PITCH + ' ' + shareUrl());
-    // X renamed the intent endpoint and `x.com/intent/tweet` now 404s
-    // intermittently; `twitter.com/intent/tweet` still works and X honors
-    // the redirect. Use the older domain for stability.
+    // X renamed "tweet" to "post" in its URL scheme; the old intent endpoints
+    // (x.com/intent/tweet AND twitter.com/intent/tweet) 404 inconsistently.
+    // The current canonical endpoint is x.com/intent/post — same query
+    // parameters, same compose modal, just the new verb in the path.
     shareXLink.href =
-      'https://twitter.com/intent/tweet?text=' +
+      'https://x.com/intent/post?text=' +
       encodeURIComponent(SHARE_PITCH) +
       '&url=' +
       encodeURIComponent(shareUrl());
@@ -1019,6 +1034,26 @@
           renderBetaCount(newCount);
         }
         updateSuccessCopy(newCount);
+
+        // Echo the captured role back to the subscriber. Also serves as
+        // a client-side-vs-server-side diagnostic: if this line shows but
+        // Mailchimp's Role field is empty, the submission is dropping
+        // server-side, not client-side.
+        var selectedRole = roleInput.value;
+        if (selectedRole && ROLE_VALUES.indexOf(selectedRole) !== -1) {
+          var ROLE_LABELS = {
+            seller: 'Seller',
+            buyer: 'Buyer',
+            both: 'Both a buyer and a seller',
+            curious: 'Curious about the product',
+          };
+          successRole.textContent =
+            'Noted — we have you down as: ' + ROLE_LABELS[selectedRole] + '.';
+          successRole.hidden = false;
+        } else {
+          successRole.hidden = true;
+        }
+
         success.classList.add('shown');
       }, 900);
     });
