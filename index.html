@@ -203,6 +203,10 @@
     font-weight: 700;
     letter-spacing: 0;
     line-height: 1.02;
+    /* text-wrap: balance distributes line breaks evenly across short
+       headings, preventing the trailing "parts." widow on narrow viewports
+       where "Home without the hard parts." would otherwise wrap awkwardly. */
+    text-wrap: balance;
     margin-bottom: 22px;
     animation: fadeUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
   }
@@ -808,7 +812,7 @@
   <section class="story" aria-labelledby="story-heading">
     <div class="story__intro">
       <p class="kicker">From offer to upkeep</p>
-      <h2 id="story-heading">One calm place for the whole life of a home.</h2>
+      <h2 id="story-heading">One place for the whole life of a home.</h2>
       <p>
         Aibödes pulls the whole arc of a home — finding it, listing it,
         closing it, and the upkeep after — into one calm place. Software
@@ -896,9 +900,13 @@
     var PUBLIC_THRESHOLD = 1000;
 
     var CANONICAL_URL = 'https://www.aibodes.com/';
-    // Now SMS-only (the X share button was removed), so the umlaut is back —
-    // SMS handlers on iOS/Android encode UTF-8 cleanly. Kept under ~160 chars
-    // to fit a single SMS segment when the URL is appended.
+    // Now SMS-only (the X share button was removed), so the umlaut is back.
+    // The umlaut and em dash both fall outside the GSM-7 alphabet, which
+    // means carriers send this in UCS-2 (16-bit) encoding — single-segment
+    // SMS is 70 chars in UCS-2, multipart segments are 67 chars. With the
+    // pitch + URL this lands as ~3 segments. That's intentional: keeping
+    // 'Aibödes' with the umlaut everywhere is a brand-voice priority and
+    // the per-segment cost is rounding-error at waitlist scale.
     var SHARE_PITCH =
       'Aibödes — home without the hard parts. Guided software for buying, selling, closing, and caring for a home. Join the beta:';
 
